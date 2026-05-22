@@ -1,0 +1,77 @@
+#include <Arduino_FreeRTOS.h>
+#define GREEN 10
+
+QueueHandle_t trafficQueue;
+
+void GreenTask(void *pvParameters);
+void YellowTask(void *pvParameters);
+void RedTask(void *pvParameters);
+void MonitorTask(void *pvParameters);
+
+void setup() {
+
+  pinMode(RED, OUTPUT);
+  pinMode(YELLOW, OUTPUT);
+  pinMode(GREEN, OUTPUT);
+
+  Serial.begin(9600);
+
+  trafficQueue = xQueueCreate(5, sizeof(char *));
+
+  xTaskCreate(GreenTask, "Green", 128, NULL, 2, NULL);
+  xTaskCreate(YellowTask, "Yellow", 128, NULL, 1, NULL);
+  xTaskCreate(RedTask, "Red", 128, NULL, 1, NULL);
+  xTaskCreate(MonitorTask, "Monitor", 128, NULL, 1, NULL);
+}
+
+void loop() {
+}
+
+void GreenTask(void *pvParameters) {
+  char *msg = "GREEN ON";
+
+  while(1) {
+    digitalWrite(GREEN, HIGH);
+    digitalWrite(YELLOW, LOW);
+    digitalWrite(RED, LOW);
+
+    xQueueSend(trafficQueue, &msg, 0);
+    vTaskDelay(5000 / portTICK_PERIOD_MS);
+  }
+}
+
+void YellowTask(void *pvParameters) {
+  char *msg = "YELLOW ON";
+
+  while(1) {
+    digitalWrite(GREEN, LOW);
+    digitalWrite(YELLOW, HIGH);
+    digitalWrite(RED, LOW);
+
+    xQueueSend(trafficQueue, &msg, 0);
+    vTaskDelay(2000 / portTICK_PERIOD_MS);
+  }
+}
+
+void RedTask(void *pvParameters) {
+  char *msg = "RED ON";
+
+  while(1) {
+    digitalWrite(GREEN, LOW);
+    digitalWrite(YELLOW, LOW);
+    digitalWrite(RED, HIGH);
+
+    xQueueSend(trafficQueue, &msg, 0);
+    vTaskDelay(5000 / portTICK_PERIOD_MS);
+  }
+}
+
+void MonitorTask(void *pvParameters) {
+  char *receivedMsg;
+
+  while(1) {
+    if(xQueueReceive(trafficQueue, &receivedMsg, portMAX_DELAY)) {
+      Serial.println(receivedMsg);
+    }
+  }
+}
